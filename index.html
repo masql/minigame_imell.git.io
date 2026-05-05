@@ -20,6 +20,7 @@
             background-color: var(--bg);
             color: var(--text);
             line-height: 1.6;
+            scroll-behavior: smooth;
         }
 
         /* --- NAVBAR --- */
@@ -57,7 +58,7 @@
         /* --- HOME CONTENT --- */
         .content-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
 
@@ -76,14 +77,19 @@
 
         .game-card {
             border: 1px solid #dddddd;
-            padding: 20px;
+            padding: 30px;
             border-radius: 8px;
             text-decoration: none;
             color: var(--text);
             transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .game-card:hover { background: #000; color: #fff; }
+        .game-card:hover { background: #000; color: #fff; transform: translateY(-5px); }
+
+        .game-card h3 { margin-top: 0; }
 
         /* --- ABOUT --- */
         .about-info { max-width: 700px; }
@@ -95,15 +101,12 @@
             border-top: 1px solid #eeeeee;
             color: #999;
         }
-
-        /* Smooth Scroll */
-        html { scroll-behavior: smooth; }
     </style>
 </head>
 <body>
 
     <nav>
-        <div class="logo">MY GAME</div>
+        <div class="logo">BAYU JULIANTO</div>
         <div class="nav-links">
             <a href="#home">HOME</a>
             <a href="#game">GAME</a>
@@ -116,12 +119,12 @@
         <h2>Beranda</h2>
         <div class="content-container">
             <div class="box">
-                <h3>Story</h3>
+                <h3>Visi & Misi</h3>
                 <p>Mengembangkan solusi perangkat lunak yang inovatif dan bermanfaat bagi masyarakat, khususnya di bidang pengembangan web dan aplikasi mobile.</p>
             </div>
             <div class="box">
-                <h3>Untuk Apa MY GAME?</h3>
-                <p>Sedang mendalami integrasi Firebase untuk game real-time dan pengembangan desain berbasis web yang responsif.</p>
+                <h3>Proyek Berjalan</h3>
+                <p>Fokus pada integrasi Firebase untuk game real-time dan pengembangan desain berbasis web yang responsif.</p>
             </div>
         </div>
     </section>
@@ -130,17 +133,18 @@
     <section id="game" style="background: #fafafa;">
         <h2>Koleksi Game</h2>
         <div class="game-grid">
-            <!-- Game Ular Tangga -->
-            <a href="ular_tangga/index.html" class="game-card">
-                <h3>🐍 Ular Tangga</h3>
-                <p>Multiplayer real-time. Mainkan bersama pasangan atau teman kamu secara sinkron.</p>
-                <strong>MAIN →</strong>
+            <!-- Link ke folder ular-tangga -->
+            <a href="ular-tangga/index.html" class="game-card">
+                <div>
+                    <h3>🐍 Ular Tangga</h3>
+                    <p>Game multiplayer real-time. Sinkronisasi gerakan antar pemain menggunakan Firebase.</p>
+                </div>
+                <strong style="margin-top: 20px;">MAIN SEKARANG →</strong>
             </a>
 
-            <!-- Placeholder -->
-            <div class="game-card" style="opacity: 0.5;">
-                <h3>🔒 Game Lainnya</h3>
-                <p>Akan segera hadir proyek game berbasis JavaScript berikutnya.</p>
+            <div class="game-card" style="opacity: 0.5; cursor: not-allowed;">
+                <h3>🔒 Coming Soon</h3>
+                <p>Project game berikutnya sedang dalam tahap pengembangan.</p>
             </div>
         </div>
     </section>
@@ -151,13 +155,14 @@
         <div class="about-info">
             <p><strong>Nama:</strong> Bayu Julianto</p>
             <p><strong>NPM:</strong> 25010071</p>
-            <p><strong>Prodi:</strong> Informatika, Universitas Dehasen Bengkulu</p>
-            <p>Saya adalah seorang mahasiswa semester 2 yang memiliki ketertarikan kuat dalam pengembangan web, grafis, dan organisasi kampus di HIMIKA.</p>
+            <p><strong>Kampus:</strong> Universitas Dehasen (UNIVED) Bengkulu</p>
+            <p><strong>Program Studi:</strong> Informatika</p>
+            <p style="margin-top: 20px;">Saya adalah mahasiswa Informatika yang aktif dalam organisasi HIMIKA dan tertarik pada pengembangan perangkat lunak serta desain grafis.</p>
         </div>
     </section>
 
     <footer>
-        &copy; 2026 Bayu Julianto. Dibuat dengan dedikasi untuk tugas dan masa depan.
+        &copy; 2026 Bayu Julianto - UNIVED Bengkulu.
     </footer>
 
 </body>
