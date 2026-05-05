@@ -3,38 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ular Tangga Multiplayer | Bayu Julianto</title>
+    <title>Ular Tangga UNIVED - Multiplayer | Bayu Julianto</title>
     
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        body { margin: 0; background: #1a1b26; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; color: white; }
+        body { margin: 0; background: #1a1b26; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
         #ui { margin-bottom: 10px; text-align: center; z-index: 10; width: 100%; }
         .btn-group { display: flex; gap: 10px; justify-content: center; }
-        .btn { padding: 10px 20px; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn { padding: 12px 25px; font-size: 16px; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.2s; box-shadow: 0 4px rgba(0,0,0,0.3); }
         #roll-btn { background: #3498db; color: white; }
-        #roll-btn:disabled { background: #44475a; opacity: 0.6; }
-        #status-info { margin-top: 5px; font-size: 18px; color: #ff79c6; font-weight: bold; }
-        .turn-indicator { font-size: 14px; color: #8be9fd; margin-bottom: 5px; }
+        #roll-btn:disabled { background: #44475a; cursor: not-allowed; opacity: 0.6; }
+        #status-info { margin-top: 10px; font-size: 20px; color: #ff79c6; font-weight: bold; text-shadow: 2px 2px #000; }
+        .role-tag { font-size: 14px; color: #8be9fd; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; margin-bottom: 5px; display: inline-block; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <div class="turn-indicator" id="turn-text">Menghubungkan ke Firebase...</div>
+        <div class="role-tag" id="role-display">Mendeteksi Role...</div>
         <div class="btn-group">
             <button class="btn" id="roll-btn" onclick="handleRoll()" disabled>🎲 KOCOK DADU</button>
-            <button class="btn" style="background:#44475a; color:white;" onclick="resetGame()">RESET</button>
+            <button class="btn" style="background:#e74c3c; color:white;" onclick="resetGame()">RESET</button>
         </div>
-        <div id="status-info">Tunggu pemain lain...</div>
+        <div id="status-info">Menghubungkan...</div>
     </div>
 
     <div id="game-container"></div>
 
     <script>
-        // --- CONFIG FIREBASE ---
+        // --- FIREBASE CONFIG (Tetap pakai punya Bayu) ---
         const firebaseConfig = {
             apiKey: "AIzaSyAzBk3CcGE3at5iSo5E8z2wykTVvwCZakk",
             authDomain: "flutter-ai-playground-9f4f1.firebaseapp.com",
@@ -47,7 +47,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- DATA KOORDINAT (Hasil Kalibrasi Bayu) ---
+        // --- KOORDINAT KALIBRASI BAYU ---
         const tiles = [
             {x:57,y:935},{x:159,y:935},{x:257,y:935},{x:335,y:935},{x:440,y:935},{x:546,y:935},{x:640,y:935},{x:750,y:935},{x:838,y:935},{x:929,y:935},
             {x:931,y:834},{x:835,y:834},{x:739,y:834},{x:642,y:834},{x:546,y:834},{x:445,y:834},{x:353,y:834},{x:253,y:834},{x:157,y:834},{x:68,y:834},
@@ -66,8 +66,7 @@
             3: 24, 20: 38, 25: 66, 42: 75, 58: 80, 70: 88         // Tangga
         };
 
-        // --- GAME LOGIC ---
-        let myRole = ""; // Akan diisi "p1" atau "p2"
+        let myRole = ""; 
         let currentTurn = "p1";
         let isMoving = false;
         let p1_sprite, p2_sprite;
@@ -85,58 +84,41 @@
         function preload() {
             this.load.image('papan', 'papan_1.png');
             this.load.image('p1_asset', 'asset_player1.png');
-            this.load.image('p2_asset', 'asset_player2.png'); // Pastikan file ini ada
+            this.load.image('p2_asset', 'asset_player2.png');
         }
 
         function create() {
             this.add.image(500, 500, 'papan').setDisplaySize(1000, 1000);
-            p1_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p1_asset').setScale(0.25).setDepth(10);
-            p2_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p2_asset').setScale(0.25).setDepth(10).setTint(0xffaaaa);
+            p1_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p1_asset').setScale(0.28).setDepth(10);
+            p2_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p2_asset').setScale(0.28).setDepth(10).setTint(0x00ff00); // Hijau untuk P2 agar beda
 
             initMultiplayer();
         }
 
         function initMultiplayer() {
-            const sessionRef = db.ref('game_session');
+            const urlParams = new URLSearchParams(window.location.search);
+            myRole = urlParams.get('role') || "p1"; // Default p1 jika tidak ada ?role=
+            
+            document.getElementById('role-display').innerText = `Role: ${myRole.toUpperCase()}`;
 
-            // Tentukan Role (Siapa yang buka duluan jadi P1)
-            sessionRef.once('value').then(snap => {
-                if (!snap.exists() || !snap.val().p1_online) {
-                    myRole = "p1";
-                    sessionRef.update({ p1_online: true, turn: "p1", p1_pos: 0, p2_pos: 0 });
-                } else {
-                    myRole = "p2";
-                    sessionRef.update({ p2_online: true });
-                }
-                document.getElementById('turn-text').innerText = `Anda Sebagai: ${myRole.toUpperCase()}`;
-            });
-
-            // Listen Perubahan Game
-            sessionRef.on('value', snap => {
-                const data = snap.val();
-                if (!data) return;
-
+            db.ref('game_session').on('value', snap => {
+                const data = snap.val() || { p1_pos: 0, p2_pos: 0, turn: "p1" };
                 currentTurn = data.turn;
-                
-                // Update Posisi Bidak (Tanpa Animasi jika perubahan dari database)
+
                 if (!isMoving) {
                     p1_sprite.setPosition(tiles[data.p1_pos].x, tiles[data.p1_pos].y);
                     p2_sprite.setPosition(tiles[data.p2_pos].x, tiles[data.p2_pos].y);
                 }
 
-                // Update UI Turn
                 const rollBtn = document.getElementById('roll-btn');
                 if (currentTurn === myRole) {
                     rollBtn.disabled = false;
-                    document.getElementById('status-info').innerText = "Giliran ANDA!";
+                    document.getElementById('status-info').innerText = "GILARAN ANDA!";
                 } else {
                     rollBtn.disabled = true;
-                    document.getElementById('status-info').innerText = `Giliran ${currentTurn.toUpperCase()}...`;
+                    document.getElementById('status-info').innerText = `Menunggu ${currentTurn.toUpperCase()}...`;
                 }
             });
-
-            // Handle saat player close browser
-            sessionRef.onDisconnect().update({ [`${myRole}_online`]: false });
         }
 
         function handleRoll() {
@@ -148,16 +130,16 @@
             document.getElementById('status-info').innerText = `🎲 Hasil: ${roll}`;
 
             db.ref('game_session').once('value').then(snap => {
-                let data = snap.val();
+                let data = snap.val() || { p1_pos: 0, p2_pos: 0 };
                 let oldPos = data[`${myRole}_pos`];
                 let newPos = oldPos + roll;
                 if (newPos > 99) newPos = 99;
 
                 animateMove(myRole, oldPos, newPos, () => {
-                    // Cek Ular/Tangga
                     if (traps[newPos] !== undefined) {
-                        newPos = traps[newPos];
-                        animateSlide(myRole, newPos, () => finalize(newPos));
+                        let targetTrap = traps[newPos];
+                        document.getElementById('status-info').innerText = targetTrap > newPos ? "YEAY! TANGGA 🪜" : "UPS! ULAR 🐍";
+                        animateSlide(myRole, targetTrap, () => finalize(targetTrap));
                     } else {
                         finalize(newPos);
                     }
@@ -168,22 +150,22 @@
         function animateMove(role, start, end, cb) {
             if (start >= end) return cb();
             let next = start + 1;
-            let targetSprite = (role === "p1") ? p1_sprite : p2_sprite;
+            let sprite = (role === "p1") ? p1_sprite : p2_sprite;
 
             game.scene.scenes[0].tweens.add({
-                targets: targetSprite,
+                targets: sprite,
                 x: tiles[next].x, y: tiles[next].y,
-                duration: 300,
+                duration: 350,
                 ease: 'Back.easeOut',
                 onComplete: () => animateMove(role, next, end, cb)
             });
         }
 
-        function animateSlide(role, finalPos, cb) {
-            let targetSprite = (role === "p1") ? p1_sprite : p2_sprite;
+        function animateSlide(role, final, cb) {
+            let sprite = (role === "p1") ? p1_sprite : p2_sprite;
             game.scene.scenes[0].tweens.add({
-                targets: targetSprite,
-                x: tiles[finalPos].x, y: tiles[finalPos].y,
+                targets: sprite,
+                x: tiles[final].x, y: tiles[final].y,
                 duration: 800,
                 ease: 'Cubic.easeInOut',
                 onComplete: cb
@@ -197,12 +179,12 @@
                 turn: nextTurn
             }).then(() => {
                 isMoving = false;
-                if (pos === 99) alert(myRole.toUpperCase() + " MENANG!");
+                if (pos === 99) alert("SELAMAT! ANDA MENANG!");
             });
         }
 
         function resetGame() {
-            db.ref('game_session').update({ p1_pos: 0, p2_pos: 0, turn: "p1" });
+            db.ref('game_session').set({ p1_pos: 0, p2_pos: 0, turn: "p1" });
         }
     </script>
 </body>
