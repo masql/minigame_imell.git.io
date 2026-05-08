@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snake Ladder Fix | Bayu Julianto</title>
+    <title>Snake Ladder Pro | Bayu Julianto</title>
     
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -11,16 +11,39 @@
 
     <style>
         body { margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Inter', sans-serif; overflow: hidden; color: white; }
+        
         #player-selection { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
         .selection-box { background: #111; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #9d50bb; }
+        
         .select-btn { margin: 10px; padding: 15px 30px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 800; width: 220px; transition: 0.3s; }
         .btn-p1 { background: #3498db; color: white; }
         .btn-p2 { background: #2ecc71; color: white; }
-        #ui { margin-bottom: 10px; text-align: center; display: none; }
-        .status { font-size: 20px; color: #a3ff00; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 10px rgba(163, 255, 0, 0.5); }
+
+        #ui { margin-bottom: 15px; text-align: center; display: none; z-index: 10; }
+        .status { font-size: 18px; color: #a3ff00; font-weight: 800; margin-bottom: 15px; }
+
+        /* --- Dadu Style --- */
+        .dice-container { display: flex; align-items: center; justify-content: center; gap: 20px; }
+        #dice-visual {
+            width: 50px; height: 50px; background: white; color: black;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 900; box-shadow: 0 0 15px rgba(255,255,255,0.5);
+            transition: 0.1s;
+        }
+        .dice-shake { animation: shake 0.1s infinite; }
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(10deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-10deg); }
+            100% { transform: rotate(0deg); }
+        }
+
         .btn-roll { background: #9d50bb; color: white; padding: 12px 25px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; }
-        .btn-roll:disabled { background: #333; cursor: not-allowed; }
-        canvas { border-radius: 15px; box-shadow: 0 0 30px rgba(157, 80, 187, 0.3); }
+        .btn-reset { background: #ff4757; color: white; padding: 12px 20px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; margin-left: 10px; }
+        .btn-roll:disabled, .btn-reset:disabled { background: #333; cursor: not-allowed; opacity: 0.5; }
+
+        canvas { border-radius: 15px; border: 2px solid #222; }
     </style>
 </head>
 <body>
@@ -28,20 +51,23 @@
     <div id="player-selection">
         <div class="selection-box">
             <h2 style="color: #9d50bb; margin-bottom: 20px;">SNAKE LADDER HUB</h2>
-            <button class="select-btn btn-p1" onclick="choosePlayer('p1')">MASUK SEBAGAI P1</button><br>
-            <button class="select-btn btn-p2" onclick="choosePlayer('p2')">MASUK SEBAGAI P2</button>
+            <button class="select-btn btn-p1" onclick="choosePlayer('p1')">PLAYER 1 (BIRU)</button><br>
+            <button class="select-btn btn-p2" onclick="choosePlayer('p2')">PLAYER 2 (HIJAU)</button>
         </div>
     </div>
 
     <div id="ui">
         <div id="status-info" class="status">Menghubungkan...</div>
-        <button class="btn-roll" id="roll-btn" onclick="handleRoll()" disabled>🎲 KOCOK DADU</button>
+        <div class="dice-container">
+            <div id="dice-visual">?</div>
+            <button class="btn-roll" id="roll-btn" onclick="handleRoll()" disabled>🎲 KOCOK</button>
+            <button class="btn-reset" id="reset-btn" onclick="resetGame()">RESET</button>
+        </div>
     </div>
 
     <div id="game-container"></div>
 
     <script>
-        // --- CONFIG FIREBASE BAYU ---
         const firebaseConfig = {
             apiKey: "AIzaSyAzBk3CcGE3at5iSo5E8z2wykTVvwCZakk",
             authDomain: "flutter-ai-playground-9f4f1.firebaseapp.com",
@@ -54,7 +80,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- KOORDINAT PAPAN (10x10) ---
         const tiles = [
             {x:57,y:935},{x:159,y:935},{x:257,y:935},{x:335,y:935},{x:440,y:935},{x:546,y:935},{x:640,y:935},{x:750,y:935},{x:838,y:935},{x:929,y:935},
             {x:931,y:834},{x:835,y:834},{x:739,y:834},{x:642,y:834},{x:546,y:834},{x:445,y:834},{x:353,y:834},{x:253,y:834},{x:157,y:834},{x:68,y:834},
@@ -72,15 +97,15 @@
 
         let myRole = ""; 
         let currentTurn = "p1";
-        let isMoving = false;
+        let isBusy = false;
         let p1_sprite, p2_sprite;
-        let lastSyncPos = { p1: 0, p2: 0 };
+        let positions = { p1: 0, p2: 0 };
 
         function choosePlayer(role) {
             myRole = role;
             document.getElementById('player-selection').style.display = "none";
             document.getElementById('ui').style.display = "block";
-            initSync();
+            startSync();
         }
 
         const config = {
@@ -105,32 +130,33 @@
             p2_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p2_asset').setScale(0.28).setDepth(10).setTint(0x00ff00);
         }
 
-        function initSync() {
-            // Listen Perubahan Giliran
+        function startSync() {
             db.ref('game_session/turn').on('value', snap => {
                 currentTurn = snap.val() || "p1";
                 updateUI();
             });
 
-            // Listen Pergerakan (Trigger Animasi)
             db.ref('game_session/move_event').on('value', snap => {
                 const data = snap.val();
-                if (!data) return;
-
-                // Cegah animasi dobel untuk diri sendiri
-                if (data.role !== myRole) {
-                    animatePawn(data.role, data.from, data.to);
-                }
+                if (!data || data.role === myRole) return; 
+                
+                // Orang lain jalan
+                isBusy = true;
+                animatePawn(data.role, data.from, data.to, () => {
+                    if(data.final !== data.to) {
+                        setTimeout(() => animateJump(data.role, data.final, () => isBusy = false), 500);
+                    } else { isBusy = false; }
+                    updateUI();
+                });
             });
 
-            // Sinkronisasi Posisi Awal
-            db.ref('game_session').once('value').then(snap => {
+            db.ref('game_session').on('value', snap => {
                 const data = snap.val();
-                if (data) {
-                    lastSyncPos.p1 = data.p1_pos || 0;
-                    lastSyncPos.p2 = data.p2_pos || 0;
-                    p1_sprite.setPosition(tiles[lastSyncPos.p1].x, tiles[lastSyncPos.p1].y);
-                    p2_sprite.setPosition(tiles[lastSyncPos.p2].x, tiles[lastSyncPos.p2].y);
+                if (data && !isBusy) {
+                    positions.p1 = data.p1_pos || 0;
+                    positions.p2 = data.p2_pos || 0;
+                    p1_sprite.setPosition(tiles[positions.p1].x, tiles[positions.p1].y);
+                    p2_sprite.setPosition(tiles[positions.p2].x, tiles[positions.p2].y);
                 }
             });
         }
@@ -138,96 +164,98 @@
         function updateUI() {
             const btn = document.getElementById('roll-btn');
             const info = document.getElementById('status-info');
-            
-            if (currentTurn === myRole) {
-                btn.disabled = isMoving;
-                info.innerText = "GILIRAN ANDA!";
+            if (currentTurn === myRole && !isBusy) {
+                btn.disabled = false;
+                info.innerText = "GILIRAN KAMU!";
                 info.style.color = "#a3ff00";
             } else {
                 btn.disabled = true;
-                info.innerText = `MENUNGGU ${currentTurn.toUpperCase()}...`;
+                info.innerText = isBusy ? "BERGERAK..." : `GILIRAN ${currentTurn.toUpperCase()}`;
                 info.style.color = "#ff4757";
             }
         }
 
         function handleRoll() {
-            if (isMoving || currentTurn !== myRole) return;
-            
-            isMoving = true;
+            if (isBusy) return;
+            isBusy = true;
             updateUI();
 
-            const roll = Math.floor(Math.random() * 6) + 1;
-            const startPos = lastSyncPos[myRole];
-            let targetPos = Math.min(startPos + roll, 99);
+            const dice = document.getElementById('dice-visual');
+            dice.classList.add('dice-shake');
 
-            // Cek Tangga/Ular
-            const finalPos = traps[targetPos] !== undefined ? traps[targetPos] : targetPos;
+            // Simulasi animasi kocokan dadu 1 detik
+            let counter = 0;
+            const interval = setInterval(() => {
+                dice.innerText = Math.floor(Math.random() * 6) + 1;
+                counter++;
+                if (counter > 10) {
+                    clearInterval(interval);
+                    dice.classList.remove('dice-shake');
+                    const roll = Math.floor(Math.random() * 6) + 1;
+                    dice.innerText = roll;
+                    processMove(roll);
+                }
+            }, 100);
+        }
 
-            // Update ke Firebase (Event Gerak)
+        function processMove(roll) {
+            const start = positions[myRole];
+            let target = Math.min(start + roll, 99);
+            const final = traps[target] !== undefined ? traps[target] : target;
+
             db.ref('game_session/move_event').set({
-                role: myRole, from: startPos, to: targetPos, final: finalPos, ts: Date.now()
+                role: myRole, from: start, to: target, final: final, ts: Date.now()
             });
 
-            // Jalankan Animasi Lokal
-            animatePawn(myRole, startPos, targetPos, () => {
-                if (finalPos !== targetPos) {
-                    // Animasi Ular/Tangga
-                    setTimeout(() => {
-                        animateJump(myRole, finalPos, () => finalizeMove(finalPos));
-                    }, 500);
+            animatePawn(myRole, start, target, () => {
+                if (final !== target) {
+                    setTimeout(() => animateJump(myRole, final, () => finalize(final)), 600);
                 } else {
-                    finalizeMove(finalPos);
+                    finalize(final);
                 }
             });
         }
 
-        function animatePawn(role, start, end, callback) {
+        function animatePawn(role, start, end, cb) {
             const sprite = (role === "p1") ? p1_sprite : p2_sprite;
             let current = start;
-
             const step = () => {
                 if (current < end) {
                     current++;
                     game.scene.scenes[0].tweens.add({
-                        targets: sprite,
-                        x: tiles[current].x,
-                        y: tiles[current].y,
-                        duration: 300,
-                        onComplete: step
+                        targets: sprite, x: tiles[current].x, y: tiles[current].y,
+                        duration: 250, onComplete: step
                     });
-                } else {
-                    lastSyncPos[role] = end;
-                    if (callback) callback();
-                }
+                } else { if(cb) cb(); }
             };
             step();
         }
 
-        function animateJump(role, final, callback) {
+        function animateJump(role, final, cb) {
             const sprite = (role === "p1") ? p1_sprite : p2_sprite;
             game.scene.scenes[0].tweens.add({
-                targets: sprite,
-                x: tiles[final].x,
-                y: tiles[final].y,
-                duration: 800,
-                ease: 'Power2.easeInOut',
-                onComplete: () => {
-                    lastSyncPos[role] = final;
-                    if (callback) callback();
-                }
+                targets: sprite, x: tiles[final].x, y: tiles[final].y,
+                duration: 700, ease: 'Back.easeOut', onComplete: cb
             });
         }
 
-        function finalizeMove(pos) {
-            const nextTurn = (myRole === "p1") ? "p2" : "p1";
+        function finalize(pos) {
+            const next = (myRole === "p1") ? "p2" : "p1";
             db.ref('game_session').update({
-                [`${myRole}_pos`]: pos,
-                turn: nextTurn
+                [`${myRole}_pos`]: pos, turn: next, move_event: null
             }).then(() => {
-                isMoving = false;
+                isBusy = false;
                 updateUI();
-                if (pos === 99) alert("SELAMAT! ANDA MENANG!");
+                if (pos === 99) alert("KAMU MENANG!");
             });
+        }
+
+        function resetGame() {
+            if(!confirm("Reset permainan untuk semua player?")) return;
+            db.ref('game_session').set({
+                p1_pos: 0, p2_pos: 0, turn: "p1", move_event: null
+            });
+            document.getElementById('dice-visual').innerText = "?";
         }
     </script>
 </body>
