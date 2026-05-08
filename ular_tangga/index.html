@@ -3,50 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ular Tangga Real-time | Bayu Julianto</title>
+    <title>Snake Ladder Fix | Bayu Julianto</title>
     
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        body { margin: 0; background: #1a1b26; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
-        #player-selection { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 27, 38, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; transition: 0.5s; }
-        .selection-box { background: #24283b; padding: 40px; border-radius: 24px; text-align: center; border: 2px solid #7aa2f7; box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
-        .select-btn { margin: 12px; padding: 18px 35px; font-size: 18px; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; transition: 0.3s; width: 220px; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-p1 { background: #3498db; color: white; box-shadow: 0 4px #2980b9; }
-        .btn-p2 { background: #2ecc71; color: white; box-shadow: 0 4px #27ae60; }
-        .select-btn:active { transform: translateY(4px); box-shadow: none; }
-        #ui { margin-bottom: 10px; text-align: center; z-index: 10; width: 100%; display: none; }
-        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 10px; }
-        .btn { padding: 14px 28px; font-size: 16px; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
-        #roll-btn { background: #7aa2f7; box-shadow: 0 4px #565f89; }
-        #roll-btn:disabled { background: #44475a; cursor: not-allowed; opacity: 0.5; box-shadow: none; }
-        #status-info { font-size: 22px; color: #ff79c6; font-weight: bold; min-height: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        body { margin: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Inter', sans-serif; overflow: hidden; color: white; }
+        #player-selection { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .selection-box { background: #111; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #9d50bb; }
+        .select-btn { margin: 10px; padding: 15px 30px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 800; width: 220px; transition: 0.3s; }
+        .btn-p1 { background: #3498db; color: white; }
+        .btn-p2 { background: #2ecc71; color: white; }
+        #ui { margin-bottom: 10px; text-align: center; display: none; }
+        .status { font-size: 20px; color: #a3ff00; font-weight: 800; margin-bottom: 10px; text-shadow: 0 0 10px rgba(163, 255, 0, 0.5); }
+        .btn-roll { background: #9d50bb; color: white; padding: 12px 25px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; }
+        .btn-roll:disabled { background: #333; cursor: not-allowed; }
+        canvas { border-radius: 15px; box-shadow: 0 0 30px rgba(157, 80, 187, 0.3); }
     </style>
 </head>
 <body>
 
     <div id="player-selection">
         <div class="selection-box">
-            <h1 style="margin-bottom: 10px; color: #7aa2f7;">PILIH PLAYER</h1>
-            <p style="color: #a9b1d6; margin-bottom: 30px;">Siapa yang akan main duluan?</p>
-            <button class="select-btn btn-p1" onclick="choosePlayer('p1')">PLAYER 1 (BIRU)</button><br>
-            <button class="select-btn btn-p2" onclick="choosePlayer('p2')">PLAYER 2 (HIJAU)</button>
+            <h2 style="color: #9d50bb; margin-bottom: 20px;">SNAKE LADDER HUB</h2>
+            <button class="select-btn btn-p1" onclick="choosePlayer('p1')">MASUK SEBAGAI P1</button><br>
+            <button class="select-btn btn-p2" onclick="choosePlayer('p2')">MASUK SEBAGAI P2</button>
         </div>
     </div>
 
     <div id="ui">
-        <div id="status-info">Menunggu server...</div>
-        <div class="btn-group">
-            <button class="btn" id="roll-btn" onclick="handleRoll()" disabled>🎲 KOCOK DADU</button>
-            <button class="btn" style="background:#f7768e;" onclick="resetGame()">RESET</button>
-        </div>
+        <div id="status-info" class="status">Menghubungkan...</div>
+        <button class="btn-roll" id="roll-btn" onclick="handleRoll()" disabled>🎲 KOCOK DADU</button>
     </div>
 
     <div id="game-container"></div>
 
     <script>
+        // --- CONFIG FIREBASE BAYU ---
         const firebaseConfig = {
             apiKey: "AIzaSyAzBk3CcGE3at5iSo5E8z2wykTVvwCZakk",
             authDomain: "flutter-ai-playground-9f4f1.firebaseapp.com",
@@ -59,6 +54,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // --- KOORDINAT PAPAN (10x10) ---
         const tiles = [
             {x:57,y:935},{x:159,y:935},{x:257,y:935},{x:335,y:935},{x:440,y:935},{x:546,y:935},{x:640,y:935},{x:750,y:935},{x:838,y:935},{x:929,y:935},
             {x:931,y:834},{x:835,y:834},{x:739,y:834},{x:642,y:834},{x:546,y:834},{x:445,y:834},{x:353,y:834},{x:253,y:834},{x:157,y:834},{x:68,y:834},
@@ -76,17 +72,15 @@
 
         let myRole = ""; 
         let currentTurn = "p1";
-        let isGlobalMoving = false;
+        let isMoving = false;
         let p1_sprite, p2_sprite;
+        let lastSyncPos = { p1: 0, p2: 0 };
 
         function choosePlayer(role) {
             myRole = role;
-            document.getElementById('player-selection').style.opacity = "0";
-            setTimeout(() => {
-                document.getElementById('player-selection').style.display = "none";
-                document.getElementById('ui').style.display = "block";
-            }, 500);
-            startFirebaseLogic();
+            document.getElementById('player-selection').style.display = "none";
+            document.getElementById('ui').style.display = "block";
+            initSync();
         }
 
         const config = {
@@ -98,6 +92,7 @@
         };
 
         const game = new Phaser.Game(config);
+
         function preload() {
             this.load.image('papan', 'papan_1.png');
             this.load.image('p1_asset', 'asset_player1.png');
@@ -110,113 +105,129 @@
             p2_sprite = this.add.sprite(tiles[0].x, tiles[0].y, 'p2_asset').setScale(0.28).setDepth(10).setTint(0x00ff00);
         }
 
-        function startFirebaseLogic() {
-            // Sinkronisasi Turn & Button
+        function initSync() {
+            // Listen Perubahan Giliran
             db.ref('game_session/turn').on('value', snap => {
                 currentTurn = snap.val() || "p1";
-                const rollBtn = document.getElementById('roll-btn');
-                if (!isGlobalMoving) {
-                    rollBtn.disabled = (currentTurn !== myRole);
-                    document.getElementById('status-info').innerText = (currentTurn === myRole) ? "GILIRAN ANDA!" : `Menunggu ${currentTurn.toUpperCase()}...`;
+                updateUI();
+            });
+
+            // Listen Pergerakan (Trigger Animasi)
+            db.ref('game_session/move_event').on('value', snap => {
+                const data = snap.val();
+                if (!data) return;
+
+                // Cegah animasi dobel untuk diri sendiri
+                if (data.role !== myRole) {
+                    animatePawn(data.role, data.from, data.to);
                 }
             });
 
-            // LOGIKA UTAMA SINKRONISASI ANIMASI
-            db.ref('game_session/last_move').on('value', snap => {
-                const moveData = snap.val();
-                if (!moveData || isGlobalMoving) return;
-
-                // Jalankan animasi di kedua layar
-                isGlobalMoving = true;
-                document.getElementById('roll-btn').disabled = true;
-                document.getElementById('status-info').innerText = `${moveData.role.toUpperCase()} Jalan ${moveData.steps} Langkah...`;
-
-                animateMove(moveData.role, moveData.from, moveData.to, () => {
-                    // Cek Ular/Tangga
-                    if (traps[moveData.to] !== undefined) {
-                        let finalPos = traps[moveData.to];
-                        animateSlide(moveData.role, finalPos, () => {
-                            isGlobalMoving = false;
-                            checkTurnStatus();
-                        });
-                    } else {
-                        isGlobalMoving = false;
-                        checkTurnStatus();
-                    }
-                });
-            });
-
-            // Sinkronisasi Posisi Awal & Reset
-            db.ref('game_session').on('value', snap => {
+            // Sinkronisasi Posisi Awal
+            db.ref('game_session').once('value').then(snap => {
                 const data = snap.val();
-                if (data && !isGlobalMoving) {
-                    p1_sprite.setPosition(tiles[data.p1_pos].x, tiles[data.p1_pos].y);
-                    p2_sprite.setPosition(tiles[data.p2_pos].x, tiles[data.p2_pos].y);
+                if (data) {
+                    lastSyncPos.p1 = data.p1_pos || 0;
+                    lastSyncPos.p2 = data.p2_pos || 0;
+                    p1_sprite.setPosition(tiles[lastSyncPos.p1].x, tiles[lastSyncPos.p1].y);
+                    p2_sprite.setPosition(tiles[lastSyncPos.p2].x, tiles[lastSyncPos.p2].y);
                 }
             });
         }
 
-        function checkTurnStatus() {
-            document.getElementById('roll-btn').disabled = (currentTurn !== myRole);
-            document.getElementById('status-info').innerText = (currentTurn === myRole) ? "GILIRAN ANDA!" : `Menunggu ${currentTurn.toUpperCase()}...`;
+        function updateUI() {
+            const btn = document.getElementById('roll-btn');
+            const info = document.getElementById('status-info');
+            
+            if (currentTurn === myRole) {
+                btn.disabled = isMoving;
+                info.innerText = "GILIRAN ANDA!";
+                info.style.color = "#a3ff00";
+            } else {
+                btn.disabled = true;
+                info.innerText = `MENUNGGU ${currentTurn.toUpperCase()}...`;
+                info.style.color = "#ff4757";
+            }
         }
 
         function handleRoll() {
-            if (isGlobalMoving || currentTurn !== myRole) return;
+            if (isMoving || currentTurn !== myRole) return;
             
+            isMoving = true;
+            updateUI();
+
             const roll = Math.floor(Math.random() * 6) + 1;
-            
-            db.ref('game_session').once('value').then(snap => {
-                const data = snap.val() || { p1_pos: 0, p2_pos: 0 };
-                let oldPos = data[`${myRole}_pos`];
-                let newPos = oldPos + roll;
-                if (newPos > 99) newPos = 99;
+            const startPos = lastSyncPos[myRole];
+            let targetPos = Math.min(startPos + roll, 99);
 
-                // Update 'last_move' agar Player lain ikut melihat animasi
-                db.ref('game_session/last_move').set({
-                    role: myRole,
-                    from: oldPos,
-                    to: newPos,
-                    steps: roll,
-                    timestamp: Date.now()
-                }).then(() => {
-                    // Update Database Utama SETELAH animasi (nanti di finalize)
-                    setTimeout(() => finalize(newPos), (roll * 400) + 1000); 
-                });
+            // Cek Tangga/Ular
+            const finalPos = traps[targetPos] !== undefined ? traps[targetPos] : targetPos;
+
+            // Update ke Firebase (Event Gerak)
+            db.ref('game_session/move_event').set({
+                role: myRole, from: startPos, to: targetPos, final: finalPos, ts: Date.now()
+            });
+
+            // Jalankan Animasi Lokal
+            animatePawn(myRole, startPos, targetPos, () => {
+                if (finalPos !== targetPos) {
+                    // Animasi Ular/Tangga
+                    setTimeout(() => {
+                        animateJump(myRole, finalPos, () => finalizeMove(finalPos));
+                    }, 500);
+                } else {
+                    finalizeMove(finalPos);
+                }
             });
         }
 
-        function animateMove(role, start, end, cb) {
-            if (start >= end) return cb();
-            let next = start + 1;
-            let sprite = (role === "p1") ? p1_sprite : p2_sprite;
+        function animatePawn(role, start, end, callback) {
+            const sprite = (role === "p1") ? p1_sprite : p2_sprite;
+            let current = start;
+
+            const step = () => {
+                if (current < end) {
+                    current++;
+                    game.scene.scenes[0].tweens.add({
+                        targets: sprite,
+                        x: tiles[current].x,
+                        y: tiles[current].y,
+                        duration: 300,
+                        onComplete: step
+                    });
+                } else {
+                    lastSyncPos[role] = end;
+                    if (callback) callback();
+                }
+            };
+            step();
+        }
+
+        function animateJump(role, final, callback) {
+            const sprite = (role === "p1") ? p1_sprite : p2_sprite;
             game.scene.scenes[0].tweens.add({
-                targets: sprite, x: tiles[next].x, y: tiles[next].y,
-                duration: 350, ease: 'Back.easeOut',
-                onComplete: () => animateMove(role, next, end, cb)
+                targets: sprite,
+                x: tiles[final].x,
+                y: tiles[final].y,
+                duration: 800,
+                ease: 'Power2.easeInOut',
+                onComplete: () => {
+                    lastSyncPos[role] = final;
+                    if (callback) callback();
+                }
             });
         }
 
-        function animateSlide(role, final, cb) {
-            let sprite = (role === "p1") ? p1_sprite : p2_sprite;
-            game.scene.scenes[0].tweens.add({
-                targets: sprite, x: tiles[final].x, y: tiles[final].y,
-                duration: 800, ease: 'Power2.easeInOut', onComplete: cb
-            });
-        }
-
-        function finalize(pos) {
+        function finalizeMove(pos) {
             const nextTurn = (myRole === "p1") ? "p2" : "p1";
             db.ref('game_session').update({
                 [`${myRole}_pos`]: pos,
-                turn: nextTurn,
-                last_move: null // Bersihkan log jalan
+                turn: nextTurn
+            }).then(() => {
+                isMoving = false;
+                updateUI();
+                if (pos === 99) alert("SELAMAT! ANDA MENANG!");
             });
-            if (pos === 99) alert("KAMU MENANG!");
-        }
-
-        function resetGame() {
-            db.ref('game_session').set({ p1_pos: 0, p2_pos: 0, turn: "p1", last_move: null });
         }
     </script>
 </body>
